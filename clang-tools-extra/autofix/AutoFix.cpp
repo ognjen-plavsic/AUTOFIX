@@ -18,24 +18,48 @@ using namespace clang::ast_matchers;
 internal::Matcher<Decl> varDeclMatcher =
     varDecl(isExpansionInMainFile()).bind("varDecl");
 
+std::string getExprStr(const Expr *expr, const ASTContext &Context) {
+  static PrintingPolicy print_policy(Context.getLangOpts());
+  print_policy.FullyQualifiedName = 1;
+  print_policy.SuppressScope = 0;
+  print_policy.PrintCanonicalTypes = 1;
+
+  std::string expr_string;
+  llvm::raw_string_ostream stream(expr_string);
+  expr->printPretty(stream, nullptr, print_policy);
+  stream.flush();
+  return expr_string;
+}
+
 class VarDeclInit : public MatchFinder::MatchCallback {
 public:
-  VarDeclInit(DiagnosticsEngine &DE) : DE(DE) {}
+  VarDeclInit(ASTContext &ASTCtx) : ASTCtx(ASTCtx) {}
   virtual void run(const MatchFinder::MatchResult &Result) {
 
     if (const VarDecl *VD = Result.Nodes.getNodeAs<clang::VarDecl>("varDecl")) {
-      if (VD->getInitStyle() != VarDecl::ListInit) {
+      if (VD->hasInit() && VD->getInitStyle() != VarDecl::ListInit) {
+        auto &DE = ASTCtx.getDiagnostics();
         unsigned ID = DE.getDiagnosticIDs()->getCustomDiagID(
             DiagnosticIDs::Warning,
             "Braced-initialization {}, without equals sign, shall be "
             "used for variable initialization");
-        DE.Report(VD->getLocation(), ID);
+
+        std::string exprStr = getExprStr(VD->getInit(), ASTCtx);
+        std::string typeStr = VD->getType().getAsString();
+        if (!llvm::dyn_cast<InitListExpr>(VD->getInit())) {
+          exprStr = "{" + exprStr + "}";
+        }
+        std::string replacementStr =
+            typeStr + " " + VD->getNameAsString() + exprStr;
+        FixItHint hint =
+            FixItHint::CreateReplacement(VD->getSourceRange(), replacementStr);
+        DE.Report(VD->getLocation(), ID) << hint;
       }
     }
   }
 
 private:
-  DiagnosticsEngine &DE;
+  ASTContext &ASTCtx;
 };
 
 class AutoFixConsumer : public clang::ASTConsumer {
@@ -43,7 +67,7 @@ public:
   explicit AutoFixConsumer(ASTContext *Context) {}
 
   virtual void HandleTranslationUnit(clang::ASTContext &Context) {
-    VarDeclInit Printer(Context.getDiagnostics());
+    VarDeclInit Printer(Context);
     MatchFinder Finder;
     Finder.addMatcher(varDeclMatcher, &Printer);
     Finder.matchAST(Context);
