@@ -1,6 +1,5 @@
+#include "AutoFixMatchers.hpp"
 #include "clang/AST/ASTConsumer.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
@@ -10,58 +9,9 @@
 #include <iostream>
 
 using namespace clang::tooling;
-using namespace llvm;
-
-using namespace clang;
-using namespace clang::ast_matchers;
 
 internal::Matcher<Decl> varDeclMatcher =
     varDecl(isExpansionInMainFile()).bind("varDecl");
-
-std::string getExprStr(const Expr *expr, const ASTContext &Context) {
-  static PrintingPolicy print_policy(Context.getLangOpts());
-  print_policy.FullyQualifiedName = 1;
-  print_policy.SuppressScope = 0;
-  print_policy.PrintCanonicalTypes = 1;
-
-  std::string expr_string;
-  llvm::raw_string_ostream stream(expr_string);
-  expr->printPretty(stream, nullptr, print_policy);
-  stream.flush();
-  return expr_string;
-}
-
-class VarDeclInit : public MatchFinder::MatchCallback {
-public:
-  VarDeclInit(ASTContext &ASTCtx) : ASTCtx(ASTCtx) {}
-  virtual void run(const MatchFinder::MatchResult &Result) {
-
-    if (const VarDecl *VD = Result.Nodes.getNodeAs<clang::VarDecl>("varDecl")) {
-      if (VD->hasInit() && VD->getInitStyle() != VarDecl::ListInit) {
-        auto &DE = ASTCtx.getDiagnostics();
-        unsigned ID = DE.getDiagnosticIDs()->getCustomDiagID(
-            DiagnosticIDs::Warning,
-            "Braced-initialization {}, without equals sign, shall be "
-            "used for variable initialization");
-
-        std::string exprStr = getExprStr(VD->getInit(), ASTCtx);
-        std::string typeStr = VD->getType().getAsString();
-        if (!llvm::dyn_cast<InitListExpr>(VD->getInit())) {
-          exprStr = "{" + exprStr + "}";
-        }
-        std::string replacementStr =
-            typeStr + " " + VD->getNameAsString() + exprStr;
-        FixItHint hint =
-            FixItHint::CreateReplacement(VD->getSourceRange(), replacementStr);
-        DE.Report(VD->getLocation(), ID) << hint;
-      }
-    }
-  }
-
-private:
-  ASTContext &ASTCtx;
-};
-
 class AutoFixConsumer : public clang::ASTConsumer {
 public:
   explicit AutoFixConsumer(ASTContext *Context) {}

@@ -1,0 +1,22 @@
+#ifndef AUTOFIX_MATCHERS_H
+#define AUTOFIX_MATCHERS_H
+
+#include "AutoFixHelper.hpp"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
+
+using namespace clang::ast_matchers;
+
+class VarDeclInit : public MatchFinder::MatchCallback {
+public:
+  VarDeclInit(ASTContext &ASTCtx) : ASTCtx(ASTCtx) {}
+  virtual void run(const MatchFinder::MatchResult &Result);
+
+  bool warnAutoTypeBracedInit(const VarDecl *VD);
+  bool warnNonAutoTypeBracedInit(const VarDecl *VD);
+
+private:
+  ASTContext &ASTCtx;
+};
+
+#endif // AUTOFIX_MATCHERS_H
