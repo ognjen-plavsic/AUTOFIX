@@ -1,10 +1,10 @@
 #include "AutoFixMatchers.hpp"
+#include <iostream>
 
 void VarDeclInit::run(const MatchFinder::MatchResult &Result) {
   if (const VarDecl *VD = Result.Nodes.getNodeAs<clang::VarDecl>("varDecl")) {
     if (VD->hasInit()) {
-      if (warnAutoTypeBracedInit(VD))
-        return;
+      warnAutoTypeBracedInit(VD);
       warnNonAutoTypeBracedInit(VD);
     }
   }
@@ -12,13 +12,14 @@ void VarDeclInit::run(const MatchFinder::MatchResult &Result) {
 
 bool VarDeclInit::warnAutoTypeBracedInit(const VarDecl *VD) {
   auto &DE = ASTCtx.getDiagnostics();
-  std::string typeStr = VD->getType().getAsString();
   if (auto dty = llvm::dyn_cast<clang::AutoType>(VD->getType().getTypePtr())) {
     if (!dty->isDecltypeAuto()) {
-      if (VD->getInitStyle() == VarDecl::ListInit) {
-
-        auto listInitExpr = getInitListExpr(VD->getInit());
-        assert(listInitExpr);
+      if (VD->getInitStyle() == VarDecl::ListInit ||
+          VD->getInitStyle() == VarDecl::CInit) {
+        auto listInitExpr = getChildOfType<InitListExpr>(VD->getInit());
+        if(!listInitExpr){
+          return false;
+        }
         unsigned ID = DE.getDiagnosticIDs()->getCustomDiagID(
             DiagnosticIDs::Warning,
             "A variable of type auto shall not be initialized using {} "
@@ -27,8 +28,7 @@ bool VarDeclInit::warnAutoTypeBracedInit(const VarDecl *VD) {
         exprStr = exprStr.substr(1, exprStr.size() - 2);
         exprStr = " = " + exprStr;
 
-        std::string replacementStr =
-            typeStr + " " + VD->getNameAsString() + exprStr;
+        std::string replacementStr = "auto " + VD->getNameAsString() + exprStr;
         FixItHint hint =
             FixItHint::CreateReplacement(VD->getSourceRange(), replacementStr);
         DE.Report(VD->getLocation(), ID) << hint;
@@ -45,10 +45,23 @@ bool VarDeclInit::warnNonAutoTypeBracedInit(const VarDecl *VD) {
     return false;
   }
   std::string typeStr = VD->getType().getAsString();
-  std::string exprStr = getExprStr(VD->getInit(), ASTCtx);
-  if (!llvm::dyn_cast<InitListExpr>(VD->getInit())) {
-    exprStr = "{" + exprStr + "}";
+  stripTypeString(typeStr);
+  auto initListExpr = getChildOfType<InitListExpr>(VD->getInit());
+  auto cxxConstructExpr = getChildOfType<CXXConstructExpr>(VD->getInit());
+  std::string exprStr;
+  if (initListExpr) {
+    exprStr = getExprStr(initListExpr, ASTCtx);
+    exprStr = exprStr.substr(1, exprStr.size() - 2);
+  } else if (cxxConstructExpr) {
+    exprStr = getExprStr(cxxConstructExpr, ASTCtx);
+    if (exprStr[0] == '{' && exprStr[exprStr.size() - 1] == '}') {
+      exprStr = exprStr.substr(1, exprStr.size() - 2);
+    }
+  } else {
+    exprStr = getExprStr(VD->getInit(), ASTCtx);
   }
+
+  exprStr = "{" + exprStr + "}";
   unsigned ID = DE.getDiagnosticIDs()->getCustomDiagID(
       DiagnosticIDs::Warning,
       "Braced-initialization {}, without equals sign, shall be "

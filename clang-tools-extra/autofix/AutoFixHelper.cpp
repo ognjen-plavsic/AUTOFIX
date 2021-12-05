@@ -16,17 +16,13 @@ std::string getExprStr(const Expr *expr, const ASTContext &Context) {
   return expr_string;
 }
 
-// TODO: Make this more general. Pass a type and return first
-// child of that type or nullptr.
-const InitListExpr *getInitListExpr(const Stmt *S) {
-  if (const InitListExpr *initListExpr =
-          llvm::dyn_cast<const InitListExpr>(S)) {
-    return initListExpr;
+void stripTypeString(std::string &typeStr) {
+  auto pos = typeStr.find("class");
+  if (pos != std::string::npos) {
+    typeStr.erase(pos, 5);
   }
-  for (const Stmt *child : S->children()) {
-    if (auto res = getInitListExpr(child)) {
-      return res;
-    }
+  pos = typeStr.find("struct");
+  if (pos != std::string::npos) {
+    typeStr.erase(pos, 6);
   }
-  return nullptr;
 }
