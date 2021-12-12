@@ -73,3 +73,20 @@ bool VarDeclInit::warnNonAutoTypeBracedInit(const VarDecl *VD) {
   DE.Report(VD->getLocation(), ID) << hint;
   return true;
 }
+
+void TypedefDeclInit::run(const MatchFinder::MatchResult &Result) {
+  if (const TypedefDecl *TD =
+          Result.Nodes.getNodeAs<clang::TypedefDecl>("typedefDecl")) {
+    auto &DE = ASTCtx.getDiagnostics();
+
+    unsigned ID = DE.getDiagnosticIDs()->getCustomDiagID(
+        DiagnosticIDs::Warning, "The typedef specifier shall not be used.");
+
+    auto typeStr = TD->getUnderlyingType().getAsString();
+    std::string replacementStr =
+        "using " + TD->getName().str() + " = " + typeStr;
+    FixItHint hint =
+        FixItHint::CreateReplacement(TD->getSourceRange(), replacementStr);
+    DE.Report(TD->getLocation(), ID) << hint;
+  }
+}

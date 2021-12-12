@@ -19,4 +19,13 @@ private:
   ASTContext &ASTCtx;
 };
 
+class TypedefDeclInit : public MatchFinder::MatchCallback {
+public:
+  TypedefDeclInit(ASTContext &ASTCtx) : ASTCtx(ASTCtx) {}
+  virtual void run(const MatchFinder::MatchResult &Result);
+
+private:
+  ASTContext &ASTCtx;
+};
+
 #endif // AUTOFIX_MATCHERS_H

@@ -12,14 +12,20 @@ using namespace clang::tooling;
 
 internal::Matcher<Decl> varDeclMatcher =
     varDecl(isExpansionInMainFile()).bind("varDecl");
+
+internal::Matcher<Decl> typedefDeclMatcher =
+    typedefDecl(isExpansionInMainFile()).bind("typedefDecl");
+
 class AutoFixConsumer : public clang::ASTConsumer {
 public:
   explicit AutoFixConsumer(ASTContext *Context) {}
 
   virtual void HandleTranslationUnit(clang::ASTContext &Context) {
-    VarDeclInit Printer(Context);
+    VarDeclInit VDPrinter(Context);
+    TypedefDeclInit TDPrinter(Context);
     MatchFinder Finder;
-    Finder.addMatcher(varDeclMatcher, &Printer);
+    Finder.addMatcher(varDeclMatcher, &VDPrinter);
+    Finder.addMatcher(typedefDeclMatcher, &TDPrinter);
     Finder.matchAST(Context);
   }
 };
