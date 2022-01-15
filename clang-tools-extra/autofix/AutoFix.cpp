@@ -10,12 +10,6 @@
 
 using namespace clang::tooling;
 
-internal::Matcher<Decl> varDeclMatcher =
-    varDecl(isExpansionInMainFile()).bind("varDecl");
-
-internal::Matcher<Decl> typedefDeclMatcher =
-    typedefDecl(isExpansionInMainFile()).bind("typedefDecl");
-
 internal::Matcher<Decl> declMatcher =
     decl(isExpansionInMainFile()).bind("decl");
 
@@ -24,12 +18,8 @@ public:
   explicit AutoFixConsumer(ASTContext *Context, SourceManager &SM): SM(SM) {}
 
   virtual void HandleTranslationUnit(clang::ASTContext &Context) {
-    VarDeclInit VDPrinter(Context);
-    TypedefDeclInit TDPrinter(Context);
     DeclInit DPrinter(Context, SM);
     MatchFinder Finder;
-    Finder.addMatcher(varDeclMatcher, &VDPrinter);
-    Finder.addMatcher(typedefDeclMatcher, &TDPrinter);
     Finder.addMatcher(declMatcher, &DPrinter);
     Finder.matchAST(Context);
   }

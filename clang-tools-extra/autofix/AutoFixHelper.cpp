@@ -1,8 +1,10 @@
 #include "AutoFixHelper.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
+#include "clang/Basic/SourceManager.h"
 #include <string>
 #include <iostream>
+#include <sstream>
 
 std::string getExprStr(const Expr *expr, const ASTContext &Context) {
   static PrintingPolicy print_policy(Context.getLangOpts());
@@ -41,4 +43,21 @@ void stripTypeString(std::string &typeStr) {
   if (pos != std::string::npos) {
     typeStr.erase(pos, 6);
   }
+}
+
+std::string getSourceString(SourceManager &SM, SourceLocation beginLoc,
+                            SourceLocation endLoc, int offset) {
+  auto beginPtr = SM.getCharacterData(beginLoc);
+  auto endPtr = SM.getCharacterData(endLoc);
+  return std::string(beginPtr, (endPtr - beginPtr) + 1 + offset);
+}
+
+std::vector<std::string> getWordsFromString(std::string &str) {
+  std::istringstream strStream(str);
+  std::string word;
+  std::vector<std::string> wordVec;
+  while (getline(strStream, word, ' ')) {
+    wordVec.push_back(word);
+  }
+  return wordVec;
 }

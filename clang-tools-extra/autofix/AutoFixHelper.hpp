@@ -3,6 +3,7 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Stmt.h"
+#include "clang/Basic/SourceManager.h"
 #include <string>
 
 using namespace llvm;
@@ -11,7 +12,9 @@ using namespace clang;
 std::string getExprStr(const Expr *expr, const ASTContext &Context);
 std::string getDeclStr(const Decl *decl, const ASTContext &Context);
 void stripTypeString(std::string &typeStr);
-
+std::string getSourceString(SourceManager &SM, SourceLocation beginLoc,
+                            SourceLocation endLoc, int offset = 0);
+std::vector<std::string> getWordsFromString(std::string &str);
 template <typename T>
 const T *getChildOfType(const Stmt *S) {
   if (const T *initListExpr = llvm::dyn_cast<const T>(S)) {

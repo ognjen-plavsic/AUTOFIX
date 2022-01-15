@@ -7,32 +7,16 @@
 
 using namespace clang::ast_matchers;
 
-class VarDeclInit : public MatchFinder::MatchCallback {
-public:
-  VarDeclInit(ASTContext &ASTCtx) : ASTCtx(ASTCtx) {}
-  virtual void run(const MatchFinder::MatchResult &Result);
-
-  bool warnAutoTypeBracedInit(const VarDecl *VD);
-  bool warnNonAutoTypeBracedInit(const VarDecl *VD);
-
-private:
-  ASTContext &ASTCtx;
-};
-
-class TypedefDeclInit : public MatchFinder::MatchCallback {
-public:
-  TypedefDeclInit(ASTContext &ASTCtx) : ASTCtx(ASTCtx) {}
-  virtual void run(const MatchFinder::MatchResult &Result);
-
-private:
-  ASTContext &ASTCtx;
-};
-
 class DeclInit : public MatchFinder::MatchCallback {
 public:
   DeclInit(ASTContext &ASTCtx, SourceManager &SM) : ASTCtx(ASTCtx), SM(SM) {}
   virtual void run(const MatchFinder::MatchResult &Result);
-
+  bool warnAutoTypeBracedInit(const VarDecl *VD);
+  bool warnNonAutoTypeBracedInit(const VarDecl *VD);
+  void warnWrongPlacedSpecifiers(const Decl *D);
+  void emitWarningWithHint(std::string &msg, std::string &replacementStr,
+                           SourceRange SR, SourceLocation SL);
+  void checkWrongPlacedSpecifiers(std::string &typeStr, std::string &declString, const Decl *D);
 private:
   ASTContext &ASTCtx;
   SourceManager &SM;
