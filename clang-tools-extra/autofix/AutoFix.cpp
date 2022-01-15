@@ -16,25 +16,31 @@ internal::Matcher<Decl> varDeclMatcher =
 internal::Matcher<Decl> typedefDeclMatcher =
     typedefDecl(isExpansionInMainFile()).bind("typedefDecl");
 
+internal::Matcher<Decl> declMatcher =
+    decl(isExpansionInMainFile()).bind("decl");
+
 class AutoFixConsumer : public clang::ASTConsumer {
 public:
-  explicit AutoFixConsumer(ASTContext *Context) {}
+  explicit AutoFixConsumer(ASTContext *Context, SourceManager &SM): SM(SM) {}
 
   virtual void HandleTranslationUnit(clang::ASTContext &Context) {
     VarDeclInit VDPrinter(Context);
     TypedefDeclInit TDPrinter(Context);
+    DeclInit DPrinter(Context, SM);
     MatchFinder Finder;
     Finder.addMatcher(varDeclMatcher, &VDPrinter);
     Finder.addMatcher(typedefDeclMatcher, &TDPrinter);
+    Finder.addMatcher(declMatcher, &DPrinter);
     Finder.matchAST(Context);
   }
+  SourceManager &SM;
 };
 
 class AutoFixAction : public clang::ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
-    return std::make_unique<AutoFixConsumer>(&Compiler.getASTContext());
+    return std::make_unique<AutoFixConsumer>(&Compiler.getASTContext(), Compiler.getSourceManager());
   }
 };
 

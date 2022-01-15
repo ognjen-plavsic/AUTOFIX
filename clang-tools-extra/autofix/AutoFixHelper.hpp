@@ -9,6 +9,7 @@ using namespace llvm;
 using namespace clang;
 
 std::string getExprStr(const Expr *expr, const ASTContext &Context);
+std::string getDeclStr(const Decl *decl, const ASTContext &Context);
 void stripTypeString(std::string &typeStr);
 
 template <typename T>

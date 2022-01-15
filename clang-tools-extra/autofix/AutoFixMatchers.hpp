@@ -28,4 +28,15 @@ private:
   ASTContext &ASTCtx;
 };
 
+class DeclInit : public MatchFinder::MatchCallback {
+public:
+  DeclInit(ASTContext &ASTCtx, SourceManager &SM) : ASTCtx(ASTCtx), SM(SM) {}
+  virtual void run(const MatchFinder::MatchResult &Result);
+
+private:
+  ASTContext &ASTCtx;
+  SourceManager &SM;
+};
+
+
 #endif // AUTOFIX_MATCHERS_H
