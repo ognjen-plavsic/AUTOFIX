@@ -18,7 +18,7 @@ bool DeclInit::warnAutoTypeBracedInit(const VarDecl *VD) {
       if (VD->getInitStyle() == VarDecl::ListInit ||
           VD->getInitStyle() == VarDecl::CInit) {
         auto listInitExpr = getChildOfType<InitListExpr>(VD->getInit());
-        if(!listInitExpr){
+        if (!listInitExpr) {
           return false;
         }
         std::string exprStr = getExprStr(listInitExpr, ASTCtx);
@@ -63,12 +63,14 @@ bool DeclInit::warnNonAutoTypeBracedInit(const VarDecl *VD) {
   std::string replacementStr = typeStr + " " + VD->getNameAsString() + exprStr;
   std::string msg = "Braced-initialization {}, without equals sign, shall be "
                     "used for variable initialization";
-  emitWarningWithHint(msg, replacementStr, VD->getSourceRange(), VD->getLocation());
+  emitWarningWithHint(msg, replacementStr, VD->getSourceRange(),
+                      VD->getLocation());
   return true;
 }
 
-
-void DeclInit::checkWrongPlacedSpecifiers(std::string &typeStr, std::string &declString, const Decl *D){
+void DeclInit::checkWrongPlacedSpecifiers(std::string &typeStr,
+                                          std::string &declString,
+                                          const Decl *D) {
   std::vector<std::string> nonTypeSpecifiers{
       "typedef",      "friend",  "constexpr", "register", "static",  "extern",
       "thread_local", "mutable", "inline",    "virtual",  "explicit"};
@@ -101,7 +103,7 @@ void DeclInit::checkWrongPlacedSpecifiers(std::string &typeStr, std::string &dec
         }
       }
     }
-    }
+  }
 }
 
 void DeclInit::warnWrongPlacedSpecifiers(const Decl *D) {
@@ -124,8 +126,7 @@ void DeclInit::run(const MatchFinder::MatchResult &Result) {
   auto D = Result.Nodes.getNodeAs<clang::Decl>("decl");
   warnWrongPlacedSpecifiers(D);
 
-  if (const TypedefDecl *TD =
-          llvm::dyn_cast<clang::TypedefDecl>(D)) {
+  if (const TypedefDecl *TD = llvm::dyn_cast<clang::TypedefDecl>(D)) {
     auto typeStr = TD->getUnderlyingType().getAsString();
     std::string replacementStr =
         "using " + TD->getName().str() + " = " + typeStr;

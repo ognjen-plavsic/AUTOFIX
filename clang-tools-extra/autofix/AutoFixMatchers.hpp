@@ -16,11 +16,12 @@ public:
   void warnWrongPlacedSpecifiers(const Decl *D);
   void emitWarningWithHint(std::string &msg, std::string &replacementStr,
                            SourceRange SR, SourceLocation SL);
-  void checkWrongPlacedSpecifiers(std::string &typeStr, std::string &declString, const Decl *D);
+  void checkWrongPlacedSpecifiers(std::string &typeStr, std::string &declString,
+                                  const Decl *D);
+
 private:
   ASTContext &ASTCtx;
   SourceManager &SM;
 };
-
 
 #endif // AUTOFIX_MATCHERS_H

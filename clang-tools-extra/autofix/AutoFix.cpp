@@ -15,7 +15,7 @@ internal::Matcher<Decl> declMatcher =
 
 class AutoFixConsumer : public clang::ASTConsumer {
 public:
-  explicit AutoFixConsumer(ASTContext *Context, SourceManager &SM): SM(SM) {}
+  explicit AutoFixConsumer(ASTContext *Context, SourceManager &SM) : SM(SM) {}
 
   virtual void HandleTranslationUnit(clang::ASTContext &Context) {
     DeclInit DPrinter(Context, SM);
@@ -30,7 +30,8 @@ class AutoFixAction : public clang::ASTFrontendAction {
 public:
   virtual std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
-    return std::make_unique<AutoFixConsumer>(&Compiler.getASTContext(), Compiler.getSourceManager());
+    return std::make_unique<AutoFixConsumer>(&Compiler.getASTContext(),
+                                             Compiler.getSourceManager());
   }
 };
 
