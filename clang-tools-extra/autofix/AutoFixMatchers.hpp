@@ -16,6 +16,9 @@ public:
   void warnWrongPlacedSpecifiers(const Decl *D);
   void emitWarningWithHint(std::string &msg, std::string &replacementStr,
                            SourceRange SR, SourceLocation SL);
+  void emitWarningWithHintInsertion(std::string &msg, std::string &str,
+                                    SourceLocation insertLoc,
+                                    SourceLocation diagLoc);
   void checkWrongPlacedSpecifiers(std::string &typeStr, std::string &declString,
                                   const Decl *D);
 

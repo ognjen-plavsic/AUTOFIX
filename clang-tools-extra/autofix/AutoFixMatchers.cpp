@@ -12,6 +12,16 @@ void DeclInit::emitWarningWithHint(std::string &msg,
   DE.Report(SL, ID) << hint;
 }
 
+void DeclInit::emitWarningWithHintInsertion(std::string &msg, std::string &str,
+                                            SourceLocation insertLoc,
+                                            SourceLocation diagLoc) {
+  auto &DE = ASTCtx.getDiagnostics();
+  unsigned ID =
+      DE.getDiagnosticIDs()->getCustomDiagID(DiagnosticIDs::Warning, msg);
+  FixItHint hint = FixItHint::CreateInsertion(insertLoc, str);
+  DE.Report(diagLoc, ID) << hint;
+}
+
 bool DeclInit::warnAutoTypeBracedInit(const VarDecl *VD) {
   if (auto dty = llvm::dyn_cast<clang::AutoType>(VD->getType().getTypePtr())) {
     if (!dty->isDecltypeAuto()) {
@@ -140,6 +150,16 @@ void DeclInit::run(const MatchFinder::MatchResult &Result) {
     if (VD->hasInit()) {
       warnAutoTypeBracedInit(VD);
       warnNonAutoTypeBracedInit(VD);
+    }
+  }
+
+  if (const EnumDecl *ED = llvm::dyn_cast<clang::EnumDecl>(D)) {
+    if (!ED->isScopedUsingClassTag()) {
+      std::string msg =
+          "Enumerations shall be declared as scoped enum classes.";
+      std::string insStr = "class";
+      emitWarningWithHintInsertion(msg, insStr, ED->getSourceRange().getBegin().getLocWithOffset(4),
+                                   ED->getLocation());
     }
   }
 }
