@@ -157,8 +157,8 @@ void DeclInit::run(const MatchFinder::MatchResult &Result) {
     if (!ED->isScopedUsingClassTag()) {
       std::string msg =
           "Enumerations shall be declared as scoped enum classes.";
-      std::string insStr = "class";
-      emitWarningWithHintInsertion(msg, insStr, ED->getSourceRange().getBegin().getLocWithOffset(4),
+      std::string insStr = "class ";
+      emitWarningWithHintInsertion(msg, insStr, ED->getSourceRange().getBegin().getLocWithOffset(5),
                                    ED->getLocation());
     }
   }

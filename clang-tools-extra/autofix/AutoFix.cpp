@@ -5,8 +5,11 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
-
-#include <iostream>
+#include "AutofixDiagnosticConsumer.h"
+#include "clang/Rewrite/Frontend/FixItRewriter.h"
+#include "clang/Rewrite/Frontend/FrontendActions.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
+#include "clang/Basic/DiagnosticOptions.h"
 
 using namespace clang::tooling;
 
@@ -18,6 +21,10 @@ public:
   explicit AutoFixConsumer(ASTContext *Context, SourceManager &SM) : SM(SM) {}
 
   virtual void HandleTranslationUnit(clang::ASTContext &Context) {
+    auto &DE = Context.getDiagnostics();
+    auto &DO = DE.getDiagnosticOptions();
+    DO.SnippetLineLimit = 10;
+
     DeclInit DPrinter(Context, SM);
     MatchFinder Finder;
     Finder.addMatcher(declMatcher, &DPrinter);
@@ -50,29 +57,35 @@ public:
   }
 };
 
-// Apply a custom category to all command-line options so that they are the
-// only ones displayed.
-static llvm::cl::OptionCategory MyToolCategory("my-tool options");
+static llvm::cl::OptionCategory AutoFixCategory("auto-fix options");
 
-// CommonOptionsParser declares HelpMessage with a description of the common
-// command-line options related to the compilation database and input files.
-// It's nice to have this help message in all tools.
+cl::opt<bool> ApplyFix("apply-fix", cl::desc(R"(Apply suggested fixes. )"),
+                         cl::init(false), cl::cat(AutoFixCategory));
+
 static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 
 // A help message for this specific tool can be added afterwards.
 static cl::extrahelp MoreHelp("\nMore help text...\n");
 
+
 int main(int argc, const char **argv) {
-  auto ExpectedParser = CommonOptionsParser::create(argc, argv, MyToolCategory);
+  auto ExpectedParser = CommonOptionsParser::create(argc, argv, AutoFixCategory);
   if (!ExpectedParser) {
     // Fail gracefully for unsupported options.
     llvm::errs() << ExpectedParser.takeError();
     return 1;
   }
   CommonOptionsParser &OptionsParser = ExpectedParser.get();
+
+  auto *DO = new DiagnosticOptions();
+  DO->ShowColors = true;
+  Rewriter Rewrite;
+  AutoFixDiagnosticConsumer DiagConsumer(llvm::outs(), &*DO, Rewrite);
+
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
 
+  Tool.setDiagnosticConsumer(&DiagConsumer);
   AutoFixActionFactory actionFactory;
   return Tool.run(&actionFactory);
 }
