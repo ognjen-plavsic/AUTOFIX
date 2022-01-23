@@ -2,11 +2,11 @@
 #define LLVM_CLANG_TOOLS_EXTRA_AUTOFIX_AUTOFIXDIAGNOSTICCONSUMER_H
 
 #include "clang/Basic/Diagnostic.h"
-#include "clang/Tooling/Core/Diagnostic.h"
-#include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Basic/DiagnosticOptions.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Rewrite/Frontend/FixItRewriter.h"
 #include "clang/Rewrite/Frontend/FrontendActions.h"
+#include "clang/Tooling/Core/Diagnostic.h"
 
 using namespace clang;
 
@@ -18,10 +18,10 @@ public:
   void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
                         const Diagnostic &Info) override;
   void finish() override;
-void BeginSourceFile (const LangOptions &LO, const Preprocessor *PP) override;
+  void BeginSourceFile(const LangOptions &LO, const Preprocessor *PP) override;
 
-tooling::Replacements Replacements;
-Rewriter Rewrite;
+  tooling::Replacements Replacements;
+  Rewriter Rewrite;
 };
 
 #endif // LLVM_CLANG_TOOLS_EXTRA_AUTOFIX_AUTOFIXDIAGNOSTICCONSUMER_H

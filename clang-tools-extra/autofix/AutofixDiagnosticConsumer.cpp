@@ -1,6 +1,6 @@
 #include "AutofixDiagnosticConsumer.h"
-#include "llvm/Support/CommandLine.h"
 #include "clang/Tooling/CommonOptionsParser.h"
+#include "llvm/Support/CommandLine.h"
 
 extern llvm::cl::opt<bool> ApplyFix;
 

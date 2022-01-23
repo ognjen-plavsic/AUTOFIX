@@ -2,27 +2,32 @@
 #include <iostream>
 #include <set>
 
-void DeclInit::emitWarningWithHint(std::string &msg,
-                                   std::string &replacementStr, SourceRange SR,
-                                   SourceLocation SL) {
-  auto &DE = ASTCtx.getDiagnostics();
+void emitWarningWithHintReplacement(DiagnosticsEngine &DE, std::string &msg,
+                                    std::string &replacementStr, SourceRange SR,
+                                    SourceLocation SL) {
   unsigned ID =
       DE.getDiagnosticIDs()->getCustomDiagID(DiagnosticIDs::Warning, msg);
   FixItHint hint = FixItHint::CreateReplacement(SR, replacementStr);
   DE.Report(SL, ID) << hint;
 }
 
-void DeclInit::emitWarningWithHintInsertion(std::string &msg, std::string &str,
-                                            SourceLocation insertLoc,
-                                            SourceLocation diagLoc) {
-  auto &DE = ASTCtx.getDiagnostics();
+void emitWarningWithHintInsertion(DiagnosticsEngine &DE, std::string &msg,
+                                  std::string &str, SourceLocation insertLoc,
+                                  SourceLocation diagLoc) {
   unsigned ID =
       DE.getDiagnosticIDs()->getCustomDiagID(DiagnosticIDs::Warning, msg);
   FixItHint hint = FixItHint::CreateInsertion(insertLoc, str);
   DE.Report(diagLoc, ID) << hint;
 }
 
-bool DeclInit::warnAutoTypeBracedInit(const VarDecl *VD) {
+void A8_5_3::run(const MatchFinder::MatchResult &Result) {
+  auto VD = Result.Nodes.getNodeAs<clang::VarDecl>("A8_5_3_Matcher");
+  if (VD->hasInit()) {
+    warnAutoTypeBracedInit(VD);
+  }
+}
+
+bool A8_5_3::warnAutoTypeBracedInit(const VarDecl *VD) {
   if (auto dty = llvm::dyn_cast<clang::AutoType>(VD->getType().getTypePtr())) {
     if (!dty->isDecltypeAuto()) {
       if (VD->getInitStyle() == VarDecl::ListInit ||
@@ -39,8 +44,9 @@ bool DeclInit::warnAutoTypeBracedInit(const VarDecl *VD) {
         std::string msg =
             "A variable of type auto shall not be initialized using {} "
             "or ={} braced initialization";
-        emitWarningWithHint(msg, replacementStr, VD->getSourceRange(),
-                            VD->getLocation());
+        emitWarningWithHintReplacement(ASTCtx.getDiagnostics(), msg,
+                                       replacementStr, VD->getSourceRange(),
+                                       VD->getLocation());
         return true;
       }
     }
@@ -48,7 +54,14 @@ bool DeclInit::warnAutoTypeBracedInit(const VarDecl *VD) {
   return false;
 }
 
-bool DeclInit::warnNonAutoTypeBracedInit(const VarDecl *VD) {
+void A8_5_2::run(const MatchFinder::MatchResult &Result) {
+  auto VD = Result.Nodes.getNodeAs<clang::VarDecl>("A8_5_2_Matcher");
+  if (VD->hasInit()) {
+    warnNonAutoTypeBracedInit(VD);
+  }
+}
+
+bool A8_5_2::warnNonAutoTypeBracedInit(const VarDecl *VD) {
   if (VD->getInitStyle() == VarDecl::ListInit) {
     return false;
   }
@@ -73,14 +86,30 @@ bool DeclInit::warnNonAutoTypeBracedInit(const VarDecl *VD) {
   std::string replacementStr = typeStr + " " + VD->getNameAsString() + exprStr;
   std::string msg = "Braced-initialization {}, without equals sign, shall be "
                     "used for variable initialization";
-  emitWarningWithHint(msg, replacementStr, VD->getSourceRange(),
-                      VD->getLocation());
+  emitWarningWithHintReplacement(ASTCtx.getDiagnostics(), msg, replacementStr,
+                                 VD->getSourceRange(), VD->getLocation());
   return true;
 }
 
-void DeclInit::checkWrongPlacedSpecifiers(std::string &typeStr,
-                                          std::string &declString,
-                                          const Decl *D) {
+void A7_2_3::run(const MatchFinder::MatchResult &Result) {
+  auto ED = Result.Nodes.getNodeAs<clang::EnumDecl>("A7_2_3_Matcher");
+  if (!ED->isScopedUsingClassTag()) {
+    std::string msg = "Enumerations shall be declared as scoped enum classes.";
+    std::string insStr = "class ";
+    emitWarningWithHintInsertion(
+        ASTCtx.getDiagnostics(), msg, insStr,
+        ED->getSourceRange().getBegin().getLocWithOffset(5), ED->getLocation());
+  }
+}
+
+void A7_1_8::run(const MatchFinder::MatchResult &Result) {
+  auto D = Result.Nodes.getNodeAs<clang::Decl>("A7_1_8_Matcher");
+  warnWrongPlacedSpecifiers(D);
+}
+
+void A7_1_8::checkWrongPlacedSpecifiers(std::string &typeStr,
+                                        std::string &declString,
+                                        const Decl *D) {
   std::vector<std::string> nonTypeSpecifiers{
       "typedef",      "friend",  "constexpr", "register", "static",  "extern",
       "thread_local", "mutable", "inline",    "virtual",  "explicit"};
@@ -102,21 +131,22 @@ void DeclInit::checkWrongPlacedSpecifiers(std::string &typeStr,
 
           // create replacement string by concatenating words from vector
           std::string replacementStr = declWordsVec[0];
-          for (auto i = 1; i < declWordsVec.size(); i++) {
+          for (unsigned i = 1; i < declWordsVec.size(); i++) {
             replacementStr += " " + declWordsVec[i];
           }
           std::string warningMsg =
               "A non-type specifier shall be placed before a "
               "type specifier in a declaration";
-          emitWarningWithHint(warningMsg, replacementStr, D->getSourceRange(),
-                              D->getLocation());
+          emitWarningWithHintReplacement(ASTCtx.getDiagnostics(), warningMsg,
+                                         replacementStr, D->getSourceRange(),
+                                         D->getLocation());
         }
       }
     }
   }
 }
 
-void DeclInit::warnWrongPlacedSpecifiers(const Decl *D) {
+void A7_1_8::warnWrongPlacedSpecifiers(const Decl *D) {
   std::string declString;
   std::string typeStr;
   if (const ValueDecl *VD = llvm::dyn_cast<clang::ValueDecl>(D)) {
@@ -132,34 +162,13 @@ void DeclInit::warnWrongPlacedSpecifiers(const Decl *D) {
   }
 }
 
-void DeclInit::run(const MatchFinder::MatchResult &Result) {
-  auto D = Result.Nodes.getNodeAs<clang::Decl>("decl");
-  warnWrongPlacedSpecifiers(D);
+void A7_1_6::run(const MatchFinder::MatchResult &Result) {
+  auto TD = Result.Nodes.getNodeAs<clang::TypedefDecl>("A7_1_6_Matcher");
 
-  if (const TypedefDecl *TD = llvm::dyn_cast<clang::TypedefDecl>(D)) {
-    auto typeStr = TD->getUnderlyingType().getAsString();
-    std::string replacementStr =
-        "using " + TD->getName().str() + " = " + typeStr;
+  auto TypeStr = TD->getUnderlyingType().getAsString();
+  std::string ReplacementStr = "using " + TD->getName().str() + " = " + TypeStr;
 
-    std::string msg = "The typedef specifier shall not be used.";
-    emitWarningWithHint(msg, replacementStr, TD->getSourceRange(),
-                        TD->getLocation());
-  }
-
-  if (const VarDecl *VD = llvm::dyn_cast<clang::VarDecl>(D)) {
-    if (VD->hasInit()) {
-      warnAutoTypeBracedInit(VD);
-      warnNonAutoTypeBracedInit(VD);
-    }
-  }
-
-  if (const EnumDecl *ED = llvm::dyn_cast<clang::EnumDecl>(D)) {
-    if (!ED->isScopedUsingClassTag()) {
-      std::string msg =
-          "Enumerations shall be declared as scoped enum classes.";
-      std::string insStr = "class ";
-      emitWarningWithHintInsertion(msg, insStr, ED->getSourceRange().getBegin().getLocWithOffset(5),
-                                   ED->getLocation());
-    }
-  }
+  std::string Msg = "The typedef specifier shall not be used.";
+  emitWarningWithHintReplacement(ASTCtx.getDiagnostics(), Msg, ReplacementStr,
+                                 TD->getSourceRange(), TD->getLocation());
 }
