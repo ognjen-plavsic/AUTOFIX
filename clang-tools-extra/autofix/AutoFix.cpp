@@ -13,20 +13,74 @@
 
 using namespace clang::tooling;
 
-internal::Matcher<Decl> A7_1_8_Matcher =
-    decl(isExpansionInMainFile()).bind("A7_1_8_Matcher");
+std::string SupportedRules = 
+  "A7-1-6 - The typedef specifier shall not be used.\n"
+  "A7-1-8 - A non-type specifier shall be placed before a type specifier in a declaration.\n"
+  "A7-2-3 - Enumerations shall be declared as scoped enum classes.\n"
+  "A8-5-2 - Braced-initialization {}, without equals sign, shall be used for variable initialization.\n"
+  "A8-5-3 - A variable of type auto shall not be initialized using {} or ={} braced initialization.\n";
 
-internal::Matcher<Decl> A7_1_6_Matcher =
-    typedefDecl(isExpansionInMainFile()).bind("A7_1_6_Matcher");
+static llvm::cl::OptionCategory AutoFixCategory("auto-fix options");
 
-internal::Matcher<Decl> A7_2_3_Matcher =
-    enumDecl(isExpansionInMainFile()).bind("A7_2_3_Matcher");
+cl::opt<bool> ApplyFix("apply-fix", cl::desc(R"(Apply suggested fixes. )"),
+                       cl::init(false), cl::cat(AutoFixCategory));
 
-internal::Matcher<Decl> A8_5_2_Matcher =
-    varDecl(isExpansionInMainFile()).bind("A8_5_2_Matcher");
+static cl::opt<std::string> Rules(
+    "rules",
+    cl::desc(
+        R"(Rules for which AutoFix will check complience for and suggest fixit hints.)"),
+    cl::init(""), cl::cat(AutoFixCategory));
 
-internal::Matcher<Decl> A8_5_3_Matcher =
-    varDecl(isExpansionInMainFile()).bind("A8_5_3_Matcher");
+static cl::opt<bool>
+    ListRules("list-rules",
+              cl::desc(R"(List all of the AutFix supported rules.)"),
+              cl::init(false), cl::cat(AutoFixCategory));
+
+static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+
+// A help message for this specific tool can be added afterwards.
+static cl::extrahelp MoreHelp("\nMore help text...\n");
+
+MatchFinder::MatchCallback *printerFactory(const std::string &MatcherName,
+                                           ASTContext &Context,
+                                           SourceManager &SM) {
+  if (MatcherName == "A7_1_6") {
+    return new A7_1_6(Context, SM);
+  } else if (MatcherName == "A7_1_8") {
+    return new A7_1_8(Context, SM);
+  } else if (MatcherName == "A7_2_3") {
+    return new A7_2_3(Context, SM);
+  } else if (MatcherName == "A8_5_2") {
+    return new A8_5_2(Context, SM);
+  } else if (MatcherName == "A8_5_3") {
+    return new A8_5_3(Context, SM);
+  } else {
+    llvm::errs() << "Unsuported rule " + MatcherName + ".\n";
+    std::exit(1);
+  }
+}
+
+internal::Matcher<Decl> *matcherFactory(const std::string &MatcherName) {
+  if (MatcherName == "A7_1_6") {
+    return new internal::Matcher<Decl>{
+        typedefDecl(isExpansionInMainFile()).bind("A7_1_6_Matcher")};
+  } else if (MatcherName == "A7_1_8") {
+    return new internal::Matcher<Decl>{
+        decl(isExpansionInMainFile()).bind("A7_1_8_Matcher")};
+  } else if (MatcherName == "A7_2_3") {
+    return new internal::Matcher<Decl>{
+        enumDecl(isExpansionInMainFile()).bind("A7_2_3_Matcher")};
+  } else if (MatcherName == "A8_5_2") {
+    return new internal::Matcher<Decl>{
+        varDecl(isExpansionInMainFile()).bind("A8_5_2_Matcher")};
+  } else if (MatcherName == "A8_5_3") {
+    return new internal::Matcher<Decl>{
+        varDecl(isExpansionInMainFile()).bind("A8_5_3_Matcher")};
+  } else {
+    llvm::errs() << "Unsuported rule " + MatcherName + ".\n";
+    std::exit(1);
+  }
+}
 
 class AutoFixConsumer : public clang::ASTConsumer {
 public:
@@ -37,20 +91,30 @@ public:
     auto &DO = DE.getDiagnosticOptions();
     DO.SnippetLineLimit = 10;
 
-    A7_1_6 A7_1_6_Printer(Context, SM);
-    A7_1_8 A7_1_8_Printer(Context, SM);
-    A7_2_3 A7_2_3_Printer(Context, SM);
-    A8_5_2 A8_5_2_Printer(Context, SM);
-    A8_5_3 A8_5_3_Printer(Context, SM);
-
+    SmallSet<std::string, 20> RulesMap = parseComaSeparatedWords(Rules);
     MatchFinder Finder;
-    Finder.addMatcher(A8_5_3_Matcher, &A8_5_3_Printer);
-    Finder.addMatcher(A7_1_6_Matcher, &A7_1_6_Printer);
-    Finder.addMatcher(A7_1_8_Matcher, &A7_1_8_Printer);
-    Finder.addMatcher(A7_2_3_Matcher, &A7_2_3_Printer);
-    Finder.addMatcher(A8_5_2_Matcher, &A8_5_2_Printer);
+
+    std::vector<internal::Matcher<Decl> *> MatcherVec;
+    std::vector<MatchFinder::MatchCallback *> PrinterVec;
+    for (const auto &MatcherName : RulesMap) {
+      internal::Matcher<Decl> *Matcher = matcherFactory(MatcherName);
+      MatchFinder::MatchCallback *Printer =
+          printerFactory(MatcherName, Context, SM);
+
+      MatcherVec.push_back(Matcher);
+      PrinterVec.push_back(Printer);
+      Finder.addMatcher(*Matcher, Printer);
+    }
 
     Finder.matchAST(Context);
+
+    // TODO: Try using uniquer_ptr to avoid memory leaks insted of new/delete.
+    for (auto *Matcher : MatcherVec) {
+      delete Matcher;
+    }
+    for (auto *Printer : PrinterVec) {
+      delete Printer;
+    }
   }
   SourceManager &SM;
 };
@@ -79,16 +143,6 @@ public:
   }
 };
 
-static llvm::cl::OptionCategory AutoFixCategory("auto-fix options");
-
-cl::opt<bool> ApplyFix("apply-fix", cl::desc(R"(Apply suggested fixes. )"),
-                       cl::init(false), cl::cat(AutoFixCategory));
-
-static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
-
-// A help message for this specific tool can be added afterwards.
-static cl::extrahelp MoreHelp("\nMore help text...\n");
-
 int main(int argc, const char **argv) {
   auto ExpectedParser =
       CommonOptionsParser::create(argc, argv, AutoFixCategory);
@@ -102,6 +156,9 @@ int main(int argc, const char **argv) {
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
 
+  if(ListRules){
+    llvm::outs() << SupportedRules;
+  }
   // Debug why this scope is needed for tests to work properly.
   // Probably a namespace issue.
   // TODO: Use VerifyDiagnosticConsumer for tests instead of FileCheck

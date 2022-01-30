@@ -4,13 +4,13 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Basic/SourceManager.h"
+#include "llvm/ADT/SmallSet.h"
 #include <string>
 
 using namespace llvm;
 using namespace clang;
 
 std::string getExprStr(const Expr *expr, const ASTContext &Context);
-std::string getDeclStr(const Decl *decl, const ASTContext &Context);
 void stripTypeString(std::string &typeStr);
 std::string getSourceString(SourceManager &SM, SourceLocation beginLoc,
                             SourceLocation endLoc, int offset = 0);
@@ -26,5 +26,7 @@ template <typename T> const T *getChildOfType(const Stmt *S) {
   }
   return nullptr;
 }
+
+llvm::SmallSet<std::string, 20> parseComaSeparatedWords(std::string Str);
 
 #endif // AUTOFIX_HELPER_H
