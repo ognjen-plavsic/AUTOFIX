@@ -13,12 +13,14 @@
 
 using namespace clang::tooling;
 
-std::string SupportedRules = 
+static std::string SupportedRules = 
   "A7-1-6 - The typedef specifier shall not be used.\n"
   "A7-1-8 - A non-type specifier shall be placed before a type specifier in a declaration.\n"
   "A7-2-3 - Enumerations shall be declared as scoped enum classes.\n"
   "A8-5-2 - Braced-initialization {}, without equals sign, shall be used for variable initialization.\n"
   "A8-5-3 - A variable of type auto shall not be initialized using {} or ={} braced initialization.\n";
+
+static std::vector<std::string> SupportedRulesVec = {"A7_1_6", "A7_1_8", "A7_2_3", "A8_5_2", "A8_5_3"};
 
 static llvm::cl::OptionCategory AutoFixCategory("auto-fix options");
 
@@ -92,8 +94,15 @@ public:
     DO.SnippetLineLimit = 10;
 
     SmallSet<std::string, 20> RulesMap = parseComaSeparatedWords(Rules);
-    MatchFinder Finder;
 
+    if (RulesMap.count("all")) {
+      RulesMap.erase("all");
+      for (const auto &Rule : SupportedRulesVec) {
+        RulesMap.insert(Rule);
+      }
+    }
+
+    MatchFinder Finder;
     std::vector<internal::Matcher<Decl> *> MatcherVec;
     std::vector<MatchFinder::MatchCallback *> PrinterVec;
     for (const auto &MatcherName : RulesMap) {

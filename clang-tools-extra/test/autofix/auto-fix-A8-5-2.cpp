@@ -1,4 +1,4 @@
-// RUN: auto-fix %s 2>&1 -- | FileCheck -dump-input-filter=all -color %s
+// RUN: auto-fix -rules="A8_5_2" %s 2>&1 -- | FileCheck -dump-input-filter=all -color %s
 
 #include <cstdint>
 #include <initializer_list>

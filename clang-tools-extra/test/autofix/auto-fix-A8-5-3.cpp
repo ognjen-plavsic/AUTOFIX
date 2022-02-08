@@ -1,4 +1,4 @@
-// RUN: auto-fix %s 2>&1 -- | FileCheck -dump-input-filter=all -color %s
+// RUN: auto-fix -rules="A8_5_3" %s 2>&1 -- | FileCheck -dump-input-filter=all -color %s
 
 #include <cstdint>
 #include <initializer_list>
@@ -17,27 +17,13 @@ void fn() noexcept {
   std::int8_t x5{10}; // Compliant
 }
 
-// CHECK: auto-fix-A8-5-3.cpp:6:8: warning: Braced-initialization {}, without equals sign, shall be used for variable initialization
-// CHECK-NEXT: auto x1(10);
-// CHECK-NEXT: ~~~~~^~~~~
-// CHECK-NEXT: int x1{10}
-
 // CHECK: auto-fix-A8-5-3.cpp:9:8: warning: A variable of type auto shall not be initialized using {} or ={} braced initialization
 // CHECK-NEXT: auto x2{10};
 // CHECK-NEXT: ~~~~~^~~~~~
 // CHECK-NEXT: auto x2 = 10
-
-// CHECK: auto-fix-A8-5-3.cpp:13:8: warning: Braced-initialization {}, without equals sign, shall be used for variable initialization
-// CHECK-NEXT: auto x3 = 10;
-// CHECK-NEXT: ~~~~~^~~~~~~
-// CHECK-NEXT: int x3{10}
 
 // CHECK: auto-fix-A8-5-3.cpp:15:8: warning: A variable of type auto shall not be initialized using {} or ={} braced initialization
 // CHECK-NEXT: auto x4 = {10};
 // CHECK-NEXT: ~~~~~^~~~~~~~~
 // CHECK-NEXT: auto x4 = 10
 
-// CHECK: auto-fix-A8-5-3.cpp:15:8: warning: Braced-initialization {}, without equals sign, shall be used for variable initialization
-// CHECK-NEXT: auto x4 = {10};
-// CHECK-NEXT: ~~~~~^~~~~~~~~
-// CHECK-NEXT: std::initializer_list<int> x4{10}
