@@ -109,7 +109,7 @@ void A8_5_3::warnAutoTypeBracedInit(const VarDecl *VD) {
         auto DeclarationTypeLoc =
             VD->getCanonicalDecl()->getTypeSourceInfo()->getTypeLoc();
 
-        if(VD->getInitStyle() == VarDecl::ListInit){
+        if (VD->getInitStyle() == VarDecl::ListInit) {
           exprStr = " = " + exprStr;
         }
 
@@ -146,7 +146,7 @@ void A8_5_2::warnNonAutoTypeBracedInit(const VarDecl *VD) {
 
   trimBraces(exprStr);
   exprStr = "{" + exprStr + "}";
-  
+
   std::string replacementStr;
   std::string msg = "Braced-initialization {}, without equals sign, shall be "
                     "used for variable initialization";
@@ -166,7 +166,12 @@ void A8_5_2::warnNonAutoTypeBracedInit(const VarDecl *VD) {
     replacementStr = exprStr;
     unsigned offset = VD->getIdentifier()->getLength();
     SourceLocation beginLoc(VD->getLocation().getLocWithOffset(offset));
-    SourceRange SR(beginLoc, VD->getInit()->getSourceRange().getEnd());
+    auto declEndLoc = VD->getInit()->getSourceRange().getEnd();
+
+    auto endLoc = (VD->getInitStyle() == VarDecl::CallInit)
+                      ? declEndLoc.getLocWithOffset(2)
+                      : declEndLoc;
+    SourceRange SR(beginLoc, endLoc);
 
     if (VD->getType()->isArrayType()) {
       replacementStr = "[]" + replacementStr;
