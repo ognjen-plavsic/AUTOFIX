@@ -1,5 +1,7 @@
 #include "AutoFixMatchers.hpp"
 #include "AutoFixHelper.hpp"
+#include "clang/Lex/HeaderSearch.h"
+#include "clang/Lex/Preprocessor.h"
 #include <iostream>
 #include <set>
 
@@ -168,10 +170,16 @@ void A8_5_2::warnNonAutoTypeBracedInit(const VarDecl *VD) {
     SourceLocation beginLoc(VD->getLocation().getLocWithOffset(offset));
     auto declEndLoc = VD->getInit()->getSourceRange().getEnd();
 
-    auto endLoc = (VD->getInitStyle() == VarDecl::CallInit)
-                      ? declEndLoc.getLocWithOffset(2)
-                      : declEndLoc;
-    SourceRange SR(beginLoc, endLoc);
+    if (VD->getInitStyle() == VarDecl::CallInit &&
+        VD->getInit()->getBeginLoc() == VD->getInit()->getEndLoc()) {
+      unsigned offsetToken =
+          Lexer::MeasureTokenLength(declEndLoc.getLocWithOffset(1), SM,
+                                    ASTCtx.getLangOpts()) +
+          1;
+      declEndLoc = declEndLoc.getLocWithOffset(offsetToken);
+    }
+
+    SourceRange SR(beginLoc, declEndLoc);
 
     if (VD->getType()->isArrayType()) {
       replacementStr = "[]" + replacementStr;
