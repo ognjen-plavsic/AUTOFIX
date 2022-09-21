@@ -138,6 +138,12 @@ void A8_5_2::run(const MatchFinder::MatchResult &Result) {
 }
 
 void A8_5_2::warnNonAutoTypeBracedInit(const VarDecl *VD) {
+  if (auto dty = llvm::dyn_cast<clang::AutoType>(VD->getType().getTypePtr())) {
+    if (!dty->isDecltypeAuto()) {
+      return;
+    }
+  }
+
   if (VD->getInitStyle() == VarDecl::ListInit) {
     return;
   }

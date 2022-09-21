@@ -188,8 +188,9 @@ int main(int argc, const char **argv) {
   if (ApplyFix) {
     auto *DO = new DiagnosticOptions();
     DO->ShowColors = true;
+    tooling::Replacements Replacements;
     Rewriter Rewrite;
-    AutoFixDiagnosticConsumer DiagConsumer(llvm::errs(), &*DO, Rewrite);
+    AutoFixDiagnosticConsumer DiagConsumer(llvm::errs(), &*DO, Rewrite, Replacements);
     Tool.setDiagnosticConsumer(&DiagConsumer);
     return Tool.run(&actionFactory);
   }

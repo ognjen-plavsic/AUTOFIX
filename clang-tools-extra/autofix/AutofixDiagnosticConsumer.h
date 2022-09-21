@@ -13,15 +13,18 @@ using namespace clang;
 class AutoFixDiagnosticConsumer : public TextDiagnosticPrinter {
 public:
   AutoFixDiagnosticConsumer(raw_ostream &os, DiagnosticOptions *diags,
-                            Rewriter Rewrite, bool OwnsOutputStream = false)
-      : TextDiagnosticPrinter(os, diags, OwnsOutputStream), Rewrite(Rewrite) {}
+                            Rewriter &Rewrite,
+                            tooling::Replacements &Replacements,
+                            bool OwnsOutputStream = false)
+      : TextDiagnosticPrinter(os, diags, OwnsOutputStream), Rewrite(Rewrite),
+        Replacements(Replacements) {}
   void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
                         const Diagnostic &Info) override;
   void finish() override;
   void BeginSourceFile(const LangOptions &LO, const Preprocessor *PP) override;
 
-  tooling::Replacements Replacements;
-  Rewriter Rewrite;
+  Rewriter &Rewrite;
+  tooling::Replacements &Replacements;
 };
 
 #endif // LLVM_CLANG_TOOLS_EXTRA_AUTOFIX_AUTOFIXDIAGNOSTICCONSUMER_H
